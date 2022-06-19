@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    namespace:名称空间
+-->
+<mapper namespace="com.itheima.mapper.BrandMapper">
+    <!--数据库表的字段名称和实体类的属性名称不一样，则不能自动封装数据-->
+    <!--    解决方法1：起别名,对不一样的列名起别名，让别名和实体类的属性名一样即可-->
+    <!--    缺点：每次查询都要定义一次别名-->
+    <!--    <select id="selectAll" resultType="Brand">-->
+    <!--        select id, brand_name as brandName, company_name as companyName, ordered, description, status-->
+    <!--        from tb_brand;-->
+    <!--    </select>-->
+    <!--    解决方法2:sql片段-->
+    <!--    缺点：不灵活，要是只想查两三个字段列名，那么又要重写定义sql片段-->
+    <!--    <select id="selectAll" resultType="Brand">-->
+    <!--        select *-->
+    <!--        from tb_brand;-->
+    <!--    </select>-->
+    <!--
+        sql片段
+    -->
+    <!--    <sql id="brand_colum">-->
+    <!--        id, brand_name as brandName, company_name as companyName, ordered, description, status-->
+    <!--    </sql>-->
+    <!--    <select id="selectAll" resultType="Brand">-->
+    <!--        select <include refid="brand_colum"></include>-->
+    <!--        from tb_brand;-->
+    <!--    </select>-->
+
+    <!--    方法3:resultMap
+                1. 定义<resultMap>标签
+                2. 在<select>标签中使用resultMap属性替换  resultType属性
+    -->
+
+    <!--    id:唯一标识-->
+    <!--    type：映射的类型，支持别名-->
+    <resultMap id="brandResultMap" type="brand">
+        <!--   完成主键的映射     <id></id>-->
+        <!--        完成一般字段的映射-->
+        <result column="brand_name" property="brandName"></result>
+        <result column="company_name" property="companyName"></result>
+    </resultMap>
+
+
+    <select id="selectAll" resultMap="brandResultMap">
+        select *
+        from tb_brand;
+    </select>
+
+    <!--
+        * 参数占位符：
+        1. #{}:会将其替换为 ? ，为了放置sql注入
+        2. ${}: 拼sql，会存在sql注入问题
+        3. 使用时间：
+            * 参数传递的时候：#{}
+
+           * 参数类型：parameterType可以省略
+           * 特殊字符的处理：
+            1. 转义字符
+            2. CDATA区;
+    -->
+    <select id="selectById" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        where id = #{id};
+    </select>
+    <!--    条件查询-->
+    <!--    <select id="selectByCondition" resultMap="brandResultMap">-->
+    <!--        select *-->
+    <!--        from tb_brand-->
+    <!--        where status = #{status} and company_name like #{companyName} and brand_name like #{brandName};-->
+    <!--    </select>-->
+
+    <!--    动态条件查询
+            * test: 逻辑表达式
+            * 问题：当第一个if不满足时候，第二个的sql语句and就会出现在前面，然后就会出现语法错误
+            * 解决方法：恒等式:在where后面添加 1 = 1
+                       <where> 替换 where 关键字 用该方法居多
+    -->
+    <select id="selectByCondition" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        -- where 1 = 1
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="companyName != null and companyName != ''">
+                and company_name like #{companyName}
+            </if>
+            <if test="brandName != null  and brandName != ''">
+                and brand_name like #{brandName};
+            </if>
+
+        </where>
+
+
+    </select>
+    <!--    <select id="selectByConditionSingle" resultMap="brandResultMap">-->
+    <!--        select *-->
+    <!--        from tb_brand-->
+    <!--        where-->
+    <!--        <choose> &lt;!&ndash;相当于switch&ndash;&gt;-->
+    <!--            <when test="status != null">&lt;!&ndash;相当于case&ndash;&gt;-->
+    <!--                status = #{status}-->
+    <!--            </when>-->
+    <!--            <when test="companyName != null and companyName != ''">&lt;!&ndash;相当于case&ndash;&gt;-->
+    <!--                company_name like #{companyName}-->
+    <!--            </when>-->
+    <!--            <when test="brandName != null  and brandName != ''">&lt;!&ndash;相当于case&ndash;&gt;-->
+    <!--                brand_name like #{brandName}-->
+    <!--            </when>-->
+    <!--            <otherwise>-->
+    <!--                1 = 1-->
+    <!--            </otherwise>-->
+    <!--        </choose>-->
+    <!--    </select>-->
+    <select id="selectByConditionSingle" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        <where>
+            <choose> <!--相当于switch-->
+                <when test="status != null"><!--相当于case-->
+                    status = #{status}
+                </when>
+                <when test="companyName != null and companyName != ''"><!--相当于case-->
+                    company_name like #{companyName}
+                </when>
+                <when test="brandName != null  and brandName != ''"><!--相当于case-->
+                    brand_name like #{brandName}
+                </when>
+            </choose>
+        </where>
+    </select>
+
+    <!--    添加数据-->
+    <insert id="add" useGeneratedKeys="true" keyProperty="id">
+
+        insert into tb_brand(brand_name, company_name, ordered, description, status)
+        values (#{brandName}, #{companyName}, #{ordered}, #{description}, #{status})
+
+    </insert>
+
+    <!--    修改数据-->
+    <update id="update">
+        update tb_brand
+        -- 不用set标签，而用set则可能出现sql的语法问题，比如最后一个if不生效，那么倒数第二个语句的逗号就会产生语法错误
+        <set>
+            <if test="brandName != null  and brandName != ''">
+                brand_name = #{brandName},
+            </if>
+            <if test="companyName != null and companyName != ''">
+                company_name = #{companyName},
+            </if>
+            <if test="ordered != null">
+                ordered = #{ordered},
+            </if>
+            <if test="description != null and description != ''">
+                description = #{description},
+            </if>
+            <if test="status != null">
+                status = #{status}
+            </if>
+        </set>
+        where id = #{id};
+    </update>
+
+    <!--    根据id删除数据-->
+    <delete id="deleteById">
+        delete
+        from tb_brand
+        where id = #{id};
+    </delete>
+    <!--    mybatis会将数组参数，封装为一个Map集合
+           * 默认： array = 数组
+           * 使用@Param注解改变map集合的默认key的名称
+
+            -->
+    <delete id="deleteByIds">
+        delete from tb_brand where id
+        in
+        <foreach collection="ids" item = "id" separator="," open = "(" close=")">
+            #{id}
+        </foreach>
+       ;
+    </delete>
+</mapper>
